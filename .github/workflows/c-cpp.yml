@@ -1,0 +1,44 @@
+name: Build Audiowmark for macOS
+on: [push, workflow_dispatch]
+
+jobs:
+  build-macos:
+    runs-on: macos-13 # Intel 架构使用 macos-13，ARM (M1/M2) 使用 macos-14
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install MacPorts
+        run: |
+          # 下载并安装适合 macOS 13 的 MacPorts
+          curl -LO https://github.com/macports/macports-base/releases/download/v2.9.1/MacPorts-2.9.1-13-Ventura.pkg
+          sudo installer -pkg MacPorts-2.9.1-13-Ventura.pkg -target /
+          echo "/opt/local/bin" >> $GITHUB_PATH
+          echo "/opt/local/sbin" >> $GITHUB_PATH
+
+      - name: Install Dependencies via MacPorts
+        run: |
+          # 根据 Portfile 里的 depends_lib 安装依赖
+          sudo /opt/local/bin/port selfupdate
+          sudo /opt/local/bin/port install fftw-3-single ffmpeg libsndfile libgcrypt libzita-resampler mpg123 pkgconfig autoconf automake libtool
+
+      - name: Clone Audiowmark Source
+        run: |
+          git clone https://github.com/swesterfeld/audiowmark.git source
+          cd source
+          ./autogen.sh
+
+      - name: Configure and Build
+        run: |
+          cd source
+          # 参考 Portfile 的参数
+          export PKG_CONFIG_PATH="/opt/local/lib/pkgconfig"
+          ./configure --prefix=$GITHUB_WORKSPACE/dist --with-ffmpeg --enable-static --disable-shared
+          make -j$(sysctl -n hw.ncpu)
+          make install
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: audiowmark-macos-intel
+          path: dist/bin/audiowmark
