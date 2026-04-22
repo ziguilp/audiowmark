@@ -3,7 +3,7 @@ on: [push, workflow_dispatch]
 
 jobs:
   build-macos:
-    runs-on: macos-13 # Intel 架构使用 macos-13，ARM (M1/M2) 使用 macos-14
+    runs-on: 	macos-26-intel
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
